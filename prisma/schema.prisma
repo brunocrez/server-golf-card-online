@@ -1,14 +1,33 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
+}
+
+model Lobby {
+  id             String   @id
+  host           String
+  status         String
+  maxPlayers     Int      @map("max_players")
+  currentPlayers Int      @map("current_players")
+  rounds         Int
+  players        Player[]
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("lobby")
+}
+
+model Player {
+  id        String   @id
+  nickname  String
+  lobbyId   String   @map("lobby_id")
+  image     String
+  Lobby     Lobby    @relation(fields: [lobbyId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("player")
 }
