@@ -1,3 +1,5 @@
+import { WebSocket } from 'ws'
+
 export interface ILobby {
   id: string
   host: string
@@ -16,3 +18,5 @@ export interface ICreateLobby {
 }
 
 export type JoinLobbyRequest = ICreateLobby & { lobbyId: string }
+
+export type LobbyConnections = Record<string, WebSocket[]>

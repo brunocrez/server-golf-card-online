@@ -1,7 +1,7 @@
 import { ZodError } from 'zod'
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { CreateLobbyService } from '../../services/lobby/CreateLobbyService'
-import { ICreateLobby } from '../../models/lobby'
+import { ICreateLobby, LobbyConnections } from '../../models/lobby'
 
 export class CreateLobbyController {
   async handle(req: FastifyRequest, reply: FastifyReply) {
@@ -18,7 +18,7 @@ export class CreateLobbyController {
           issues: error.issues,
         })
       } else {
-        reply.status(500).send({ message: 'Internal Server Error' })
+        reply.status(500).send(error)
       }
     }
   }

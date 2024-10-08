@@ -29,6 +29,9 @@ export class CreateLobbyService {
 
     await playerService.execute({ nickname, id: playerId, lobbyId, image })
 
-    return response
+    return {
+      ...response,
+      players: [{ id: playerId, nickname, image, isHost: true }],
+    }
   }
 }

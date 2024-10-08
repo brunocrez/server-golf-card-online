@@ -1,15 +1,13 @@
-import { ILobby, JoinLobbyRequest } from '../../models/lobby'
+import { WebSocket } from 'ws'
+import { prisma } from '../../database/prisma-client'
+import { JoinLobbyRequest, LobbyConnections } from '../../models/lobby'
 import { joinLobbySchema } from '../../schemas/lobbySchema'
-import { CreatePlayerService } from '../player/CreatePlayerService'
 import { GetLobbyByIdService } from './GetLobbyByIdService'
-import { UpdateLobbyService } from './UpdateLobbyService'
 
 export class JoinLobbyService {
-  async execute(params: JoinLobbyRequest) {
+  async execute(params: JoinLobbyRequest, lobbyConnections: LobbyConnections) {
     const parseData = joinLobbySchema.parse(params)
     const getLobby = new GetLobbyByIdService()
-    const playerService = new CreatePlayerService()
-    const updateLobbyService = new UpdateLobbyService()
     const { playerId, image, nickname, lobbyId } = parseData
 
     const currLobby = await getLobby.execute(lobbyId)
@@ -22,20 +20,42 @@ export class JoinLobbyService {
       throw new Error('Lobby is already full!')
     }
 
-    await playerService.execute({ id: playerId, nickname, lobbyId, image })
+    const createPlayer = { id: playerId, nickname, lobbyId, image }
+    await prisma.player.create({ data: createPlayer })
 
-    // update lobby
-    const data: ILobby = {
-      host: currLobby.host,
-      id: currLobby.id,
-      maxPlayers: currLobby.maxPlayers,
-      rounds: currLobby.rounds,
-      status: currLobby.status,
-      currentPlayers: currLobby.currentPlayers + 1,
-      createdAt: currLobby.createdAt,
-      updatedAt: new Date(),
-    }
+    const response = await prisma.lobby.update({
+      where: { id: lobbyId },
+      data: {
+        currentPlayers: { increment: 1 },
+      },
+      include: { players: true },
+    })
 
-    return await updateLobbyService.execute(data)
+    const playerJoinedMessage = JSON.stringify({
+      type: 'playerJoined',
+      player: { nickname, playerId, image, lobbyId },
+    })
+
+    const notifyPlayers = new Promise<void>((resolve) => {
+      if (lobbyConnections[lobbyId]) {
+        lobbyConnections[lobbyId].forEach((client) => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(playerJoinedMessage)
+          }
+        })
+        resolve()
+      } else {
+        resolve()
+      }
+    })
+
+    await notifyPlayers
+
+    const mappedPlayers = response.players.map((el) => ({
+      ...el,
+      isHost: el.id === response.host,
+    }))
+
+    return { ...response, players: mappedPlayers }
   }
 }
