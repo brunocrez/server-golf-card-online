@@ -1,4 +1,4 @@
-import { WebSocket } from 'ws'
+import { IPlayer } from './player'
 
 export interface ILobby {
   id: string
@@ -6,17 +6,8 @@ export interface ILobby {
   status: string
   maxPlayers: number
   currentPlayers: number
+  players: IPlayer[]
   rounds: number
   createdAt: Date
   updatedAt: Date
 }
-
-export interface ICreateLobby {
-  playerId: string
-  nickname: string
-  image: string
-}
-
-export type JoinLobbyRequest = ICreateLobby & { lobbyId: string }
-
-export type LobbyConnections = Record<string, WebSocket[]>
