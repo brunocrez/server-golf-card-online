@@ -18,10 +18,14 @@ export const joinLobby = (socket: Socket, lobbies: Map<string, ILobby>) => {
     }
 
     if (lobby.currentPlayers >= lobby.maxPlayers) {
-      socket.emit('lobby-full', 'lobby cheio')
+      socket.emit('full-lobby', {
+        message: 'desculpe, mas a sala já está cheia!',
+        lobby,
+      })
+      return
     }
 
-    const player = { nickname, image, playerId }
+    const player = { nickname, image, playerId, isHost: false }
     const updatedPlayers = [...lobby.players, player]
     const updatedLobby = {
       ...lobby,
@@ -30,9 +34,8 @@ export const joinLobby = (socket: Socket, lobbies: Map<string, ILobby>) => {
     }
 
     lobbies.set(payload.lobbyId, updatedLobby)
-
     socket.join(payload.lobbyId)
     socket.emit('joined-lobby', updatedLobby)
-    socket.broadcast.emit('updated-lobby', updatedLobby)
+    socket.broadcast.to(payload.lobbyId).emit('updated-lobby', updatedLobby)
   })
 }

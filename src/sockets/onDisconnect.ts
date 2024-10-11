@@ -2,6 +2,7 @@ import { Socket } from 'socket.io'
 import { ILobby } from '../models/lobby'
 
 export const onDisconnect = (socket: Socket, lobbies: Map<string, ILobby>) => {
+  console.log('Disconnecting: ', socket.id)
   for (const [lobbyId, lobby] of lobbies.entries()) {
     const playerIndex = lobby.players.findIndex(
       (player) => player.playerId === socket.id,
@@ -18,7 +19,7 @@ export const onDisconnect = (socket: Socket, lobbies: Map<string, ILobby>) => {
         currentPlayers: updatedPlayers.length,
       }
 
-      socket.broadcast.emit('updated-lobby', updatedLobby)
+      socket.broadcast.to(lobbyId).emit('updated-lobby', updatedLobby)
 
       if (lobby.currentPlayers === 0) {
         lobbies.delete(lobbyId)

@@ -27,6 +27,7 @@ const start = async () => {
     })
 
     io.on('connection', (socket) => {
+      console.log('Connecting: ', socket.id)
       createLobby(socket, lobbies)
       joinLobby(socket, lobbies)
       getLobby(socket, lobbies)
