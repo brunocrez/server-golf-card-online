@@ -1,3 +1,4 @@
+import { Card, IDeck } from './deck'
 import { IPlayer } from './player'
 
 export interface ILobby {
@@ -8,6 +9,12 @@ export interface ILobby {
   currentPlayers: number
   players: IPlayer[]
   rounds: number
+  deck: IDeck | undefined
+  discardPile: Card[] | undefined
+  currentTurn: string | undefined
+  isFirstTurn: boolean
+  isLastTurn: boolean
+  playerStartedLastTurn: string | undefined
   createdAt: Date
   updatedAt: Date
 }
