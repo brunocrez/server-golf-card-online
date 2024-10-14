@@ -2,13 +2,9 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import { Server } from 'socket.io'
 import { ILobby } from './models/lobby'
-import {
-  createLobby,
-  getLobby,
-  joinLobby,
-  leaveLobby,
-  onDisconnect,
-} from './sockets'
+import { onDisconnect } from './sockets/onDisconnect'
+import { gameHandler } from './sockets/gameHandler'
+import { lobbyHandler } from './sockets/lobbyHandler'
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8080
 
@@ -28,10 +24,18 @@ const start = async () => {
 
     io.on('connection', (socket) => {
       console.log('Connecting: ', socket.id)
-      createLobby(socket, lobbies)
-      joinLobby(socket, lobbies)
-      getLobby(socket, lobbies)
-      leaveLobby(socket, lobbies)
+      const { startGame, flipCard } = gameHandler(socket, lobbies)
+      const { createLobby, joinLobby, getLobby, leaveLobby } = lobbyHandler(
+        socket,
+        lobbies,
+      )
+
+      createLobby()
+      joinLobby()
+      getLobby()
+      leaveLobby()
+      startGame()
+      flipCard()
 
       socket.on('disconnect', () => {
         onDisconnect(socket, lobbies)
