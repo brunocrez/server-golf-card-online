@@ -24,7 +24,7 @@ export const distribuiteCards = (
 }
 
 export const isFirstTurn = (players: IPlayer[]) => {
-  return players.every((player) => player.movesLeft > 0)
+  return players.some((player) => player.movesLeft > 0)
 }
 
 export const isLastTurn = (players: IPlayer[]) => {
@@ -94,4 +94,9 @@ export const updatePlayerMoves = (players: IPlayer[], playerId: string) => {
     }
     return player
   })
+}
+
+export const hasMovesLeft = (players: IPlayer[], playerId: string) => {
+  const currPlayerIndex = players.findIndex((p) => p.playerId === playerId)
+  return players[currPlayerIndex].movesLeft > 0
 }
