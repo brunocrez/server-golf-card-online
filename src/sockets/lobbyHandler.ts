@@ -39,7 +39,7 @@ export const lobbyHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
         status: LobbyStatus.WAITING,
         rounds: 5,
         deck: undefined,
-        discardPile: undefined,
+        discardPile: [],
         currentTurn: payload.playerId,
         isFirstTurn: true,
         isLastTurn: false,

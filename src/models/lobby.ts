@@ -10,7 +10,7 @@ export interface ILobby {
   players: IPlayer[]
   rounds: number
   deck: IDeck | undefined
-  discardPile: Card[] | undefined
+  discardPile: Card[]
   currentTurn: string | undefined
   isFirstTurn: boolean
   isLastTurn: boolean

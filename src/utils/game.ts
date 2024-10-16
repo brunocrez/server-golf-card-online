@@ -98,5 +98,55 @@ export const updatePlayerMoves = (players: IPlayer[], playerId: string) => {
 
 export const hasMovesLeft = (players: IPlayer[], playerId: string) => {
   const currPlayerIndex = players.findIndex((p) => p.playerId === playerId)
+
+  if (currPlayerIndex === -1) {
+    return
+  }
+
   return players[currPlayerIndex].movesLeft > 0
+}
+
+export const updatePlayerBoard = (
+  players: IPlayer[],
+  playerId: string,
+  drawnCard: Card,
+  cardToBeReplaced: Card,
+) => {
+  const player = players.find((p) => p.playerId === playerId)
+
+  if (!player || !player.cards) {
+    return players
+  }
+
+  const cardIndex = player.cards.findIndex(
+    (card) => card.code === cardToBeReplaced.code,
+  )
+
+  if (cardIndex === -1) {
+    return players
+  }
+
+  const updatedCards = [
+    ...player.cards.slice(0, cardIndex),
+    { ...drawnCard, faceUp: true },
+    ...player.cards.slice(cardIndex + 1),
+  ]
+
+  return players.map((p) => {
+    if (p.playerId === playerId) {
+      return { ...p, cards: updatedCards }
+    }
+
+    return p
+  })
+}
+
+export const updateDiscardPile = (
+  pile: Card[],
+  drawnCard: Card,
+  cardToReplace: Card,
+) => {
+  const newPile = pile.filter((card) => card.code !== drawnCard.code)
+  newPile.push(cardToReplace)
+  return newPile
 }

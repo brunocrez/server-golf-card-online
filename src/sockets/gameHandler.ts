@@ -10,10 +10,27 @@ import {
   isLastTurn,
   nextTurn,
   startLastTurn,
+  updateDiscardPile,
+  updatePlayerBoard,
   updatePlayerMoves,
 } from '../utils/game'
 import { createNewDeck, drawCard } from '../services/deck-service'
 import { LobbyStatus } from '../utils/LobbyStatus'
+import { Card } from '../models/deck'
+import { IPlayer } from '../models/player'
+
+interface IFlipCardRequest {
+  playerId: string
+  card: string
+  lobbyId: string
+}
+
+interface IDrawFromPileRequest {
+  playerId: string
+  drawnCard: Card
+  cardToReplace: Card
+  lobbyId: string
+}
 
 export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
   const startGame = () => {
@@ -60,64 +77,83 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
   }
 
   const flipCard = () => {
-    socket.on(
-      'flip-card',
-      (payload: { card: string; playerId: string; lobbyId: string }) => {
-        const { card, playerId, lobbyId } = payload
-        const lobby = lobbies.get(lobbyId)
+    socket.on('flip-card', (payload: IFlipCardRequest) => {
+      const { card, playerId, lobbyId } = payload
+      const lobby = lobbies.get(lobbyId)
 
-        if (!lobby) {
-          // algo deu errado!
-          return
-        }
+      if (!lobby) {
+        // algo deu errado!
+        return
+      }
 
-        let updateGameState: ILobby = {} as ILobby
-        const { id, players, playerStartedLastTurn } = lobby
+      let updateGameState: ILobby = {} as ILobby
+      const { id, players, playerStartedLastTurn } = lobby
 
-        const updatedPlayers = flipPlayerCard(players, playerId, card)
+      const updatedPlayers = flipPlayerCard(players, playerId, card)
 
+      updateGameState = {
+        ...lobby,
+        players: updatedPlayers,
+      }
+
+      lobbies.set(id, updateGameState)
+
+      if (startLastTurn(lobby, playerId)) {
         updateGameState = {
           ...lobby,
-          players: updatedPlayers,
+          playerStartedLastTurn: playerId,
         }
 
         lobbies.set(id, updateGameState)
+      }
 
-        if (startLastTurn(lobby, playerId)) {
-          updateGameState = {
-            ...lobby,
-            playerStartedLastTurn: playerId,
-          }
+      if (isLastTurn(players)) {
+        // revela cartas restantes
+        const updatePlayer = flipRemainingCards(updatedPlayers, playerId)
 
-          lobbies.set(id, updateGameState)
-        }
+        // passa o turno
+        const nextTurnIndex = nextTurn(lobby, playerId)
 
-        if (isLastTurn(players)) {
-          // revela cartas restantes
-          const updatePlayer = flipRemainingCards(updatedPlayers, playerId)
-
-          // passa o turno
-          const nextTurnIndex = nextTurn(lobby, playerId)
-
-          if (players[nextTurnIndex].playerId === playerStartedLastTurn) {
-            // chegou na pessoa que virou a última carta
-            // chamar função que finaliza o game endGame()
-
-            updateGameState = {
-              ...lobby,
-              players: updatePlayer,
-            }
-
-            lobbies.set(lobby.id, updateGameState)
-            socket.emit('updated-game', updateGameState)
-            socket.broadcast.to(lobby.id).emit('updated-game', updateGameState)
-
-            return
-          }
+        if (players[nextTurnIndex].playerId === playerStartedLastTurn) {
+          // chegou na pessoa que virou a última carta
+          // chamar função que finaliza o game endGame()
 
           updateGameState = {
             ...lobby,
             players: updatePlayer,
+          }
+
+          lobbies.set(lobby.id, updateGameState)
+          socket.emit('updated-game', updateGameState)
+          socket.broadcast.to(lobby.id).emit('updated-game', updateGameState)
+
+          return
+        }
+
+        updateGameState = {
+          ...lobby,
+          players: updatePlayer,
+          currentTurn: lobby.players[nextTurnIndex].playerId,
+        }
+
+        lobbies.set(lobby.id, updateGameState)
+        socket.emit('updated-game', updateGameState)
+        socket.broadcast.to(lobby.id).emit('updated-game', updateGameState)
+        return
+      }
+
+      if (isFirstTurn(lobby.players)) {
+        const updatedPlayerMoves = updatePlayerMoves(updatedPlayers, playerId)
+        updateGameState = {
+          ...lobby,
+          players: updatedPlayerMoves,
+        }
+
+        if (!hasMovesLeft(updatedPlayerMoves, playerId)) {
+          const nextTurnIndex = nextTurn(lobby, playerId)
+          updateGameState = {
+            ...lobby,
+            players: updatedPlayerMoves,
             currentTurn: lobby.players[nextTurnIndex].playerId,
           }
 
@@ -127,25 +163,126 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
           return
         }
 
-        if (isFirstTurn(lobby.players)) {
-          const updatedPlayerMoves = updatePlayerMoves(updatedPlayers, playerId)
+        lobbies.set(lobby.id, updateGameState)
+        socket.emit('updated-game', updateGameState)
+        socket.broadcast.to(lobby.id).emit('updated-game', updateGameState)
+        return
+      }
+
+      const nextTurnIndex = nextTurn(lobby, playerId)
+
+      updateGameState = {
+        ...lobby,
+        players: updatedPlayers,
+        currentTurn: lobby.players[nextTurnIndex].playerId,
+      }
+
+      lobbies.set(lobby.id, updateGameState)
+      socket.emit('updated-game', updateGameState)
+      socket.broadcast.to(lobby.id).emit('updated-game', updateGameState)
+
+      return
+    })
+  }
+
+  const drawCardFromPile = () => {
+    socket.on('draw-card-from-pile', (payload: IDrawFromPileRequest) => {
+      const { cardToReplace, drawnCard, lobbyId, playerId } = payload
+
+      const lobby = lobbies.get(lobbyId)
+
+      if (!lobby) {
+        // algo deu errado!
+        return
+      }
+
+      let updateGameState: ILobby = {} as ILobby
+      const { id, players, discardPile, playerStartedLastTurn } = lobby
+
+      const updatedPlayers = updatePlayerBoard(
+        players,
+        playerId,
+        drawnCard,
+        cardToReplace,
+      )
+
+      const updatedDiscardPile = updateDiscardPile(
+        discardPile,
+        drawnCard,
+        cardToReplace,
+      )
+
+      updateGameState = {
+        ...lobby,
+        players: updatedPlayers,
+        discardPile: updatedDiscardPile,
+      }
+
+      lobbies.set(lobbyId, updateGameState)
+
+      if (startLastTurn(lobby, playerId)) {
+        updateGameState = {
+          ...lobby,
+          playerStartedLastTurn: playerId,
+          discardPile: updatedDiscardPile,
+        }
+
+        lobbies.set(id, updateGameState)
+      }
+
+      if (isLastTurn(players)) {
+        // revela cartas restantes
+        const updatePlayer = flipRemainingCards(updatedPlayers, playerId)
+
+        // passa o turno
+        const nextTurnIndex = nextTurn(lobby, playerId)
+
+        if (players[nextTurnIndex].playerId === playerStartedLastTurn) {
+          // chegou na pessoa que virou a última carta
+          // chamar função que finaliza o game endGame()
+
+          updateGameState = {
+            ...lobby,
+            players: updatePlayer,
+            discardPile: updatedDiscardPile,
+          }
+
+          lobbies.set(lobby.id, updateGameState)
+          socket.emit('updated-game', updateGameState)
+          socket.broadcast.to(lobby.id).emit('updated-game', updateGameState)
+
+          return
+        }
+
+        updateGameState = {
+          ...lobby,
+          players: updatePlayer,
+          currentTurn: lobby.players[nextTurnIndex].playerId,
+          discardPile: updatedDiscardPile,
+        }
+
+        lobbies.set(lobby.id, updateGameState)
+        socket.emit('updated-game', updateGameState)
+        socket.broadcast.to(lobby.id).emit('updated-game', updateGameState)
+        return
+      }
+
+      if (isFirstTurn(lobby.players)) {
+        const updatedPlayerMoves = updatePlayerMoves(updatedPlayers, playerId)
+
+        updateGameState = {
+          ...lobby,
+          players: updatedPlayerMoves,
+          discardPile: updatedDiscardPile,
+        }
+
+        if (!hasMovesLeft(updatedPlayerMoves, playerId)) {
+          const nextTurnIndex = nextTurn(lobby, playerId)
           updateGameState = {
             ...lobby,
             players: updatedPlayerMoves,
-          }
-
-          if (!hasMovesLeft(updatedPlayerMoves, playerId)) {
-            const nextTurnIndex = nextTurn(lobby, playerId)
-            updateGameState = {
-              ...lobby,
-              players: updatedPlayerMoves,
-              currentTurn: lobby.players[nextTurnIndex].playerId,
-            }
-
-            lobbies.set(lobby.id, updateGameState)
-            socket.emit('updated-game', updateGameState)
-            socket.broadcast.to(lobby.id).emit('updated-game', updateGameState)
-            return
+            currentTurn: lobby.players[nextTurnIndex].playerId,
+            discardPile: updatedDiscardPile,
           }
 
           lobbies.set(lobby.id, updateGameState)
@@ -154,22 +291,28 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
           return
         }
 
-        const nextTurnIndex = nextTurn(lobby, playerId)
-
-        updateGameState = {
-          ...lobby,
-          players: updatedPlayers,
-          currentTurn: lobby.players[nextTurnIndex].playerId,
-        }
-
         lobbies.set(lobby.id, updateGameState)
         socket.emit('updated-game', updateGameState)
         socket.broadcast.to(lobby.id).emit('updated-game', updateGameState)
-
         return
-      },
-    )
+      }
+
+      const nextTurnIndex = nextTurn(lobby, playerId)
+
+      updateGameState = {
+        ...lobby,
+        players: updatedPlayers,
+        currentTurn: lobby.players[nextTurnIndex].playerId,
+        discardPile: updatedDiscardPile,
+      }
+
+      lobbies.set(lobby.id, updateGameState)
+      socket.emit('updated-game', updateGameState)
+      socket.broadcast.to(lobby.id).emit('updated-game', updateGameState)
+
+      return
+    })
   }
 
-  return { startGame, flipCard }
+  return { startGame, flipCard, drawCardFromPile }
 }

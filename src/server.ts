@@ -24,7 +24,10 @@ const start = async () => {
 
     io.on('connection', (socket) => {
       console.log('Connecting: ', socket.id)
-      const { startGame, flipCard } = gameHandler(socket, lobbies)
+      const { startGame, flipCard, drawCardFromPile } = gameHandler(
+        socket,
+        lobbies,
+      )
       const { createLobby, joinLobby, getLobby, leaveLobby } = lobbyHandler(
         socket,
         lobbies,
@@ -36,6 +39,7 @@ const start = async () => {
       leaveLobby()
       startGame()
       flipCard()
+      drawCardFromPile()
 
       socket.on('disconnect', () => {
         onDisconnect(socket, lobbies)
