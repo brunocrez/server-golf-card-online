@@ -15,7 +15,7 @@ const lobbies = new Map<string, ILobby>()
 
 const start = async () => {
   try {
-    await fastify.listen({ port: PORT })
+    await fastify.listen({ port: PORT, host: '0.0.0.0' })
     console.log(`Server running at PORT ${PORT}`)
 
     const io = new Server(fastify.server, {
