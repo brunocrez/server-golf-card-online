@@ -32,6 +32,12 @@ interface IDrawFromPileRequest {
   lobbyId: string
 }
 
+interface IDiscardDrawnCard {
+  lobbyId: string
+  playerId: string
+  card: Card
+}
+
 export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
   const startGame = () => {
     socket.on('start-game', async (lobbyId: string) => {
@@ -185,8 +191,8 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
     })
   }
 
-  const drawCardFromPile = () => {
-    socket.on('draw-card-from-pile', (payload: IDrawFromPileRequest) => {
+  const replaceCard = () => {
+    socket.on('replace-card', (payload: IDrawFromPileRequest) => {
       const { cardToReplace, drawnCard, lobbyId, playerId } = payload
 
       const lobby = lobbies.get(lobbyId)
@@ -314,5 +320,158 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
     })
   }
 
-  return { startGame, flipCard, drawCardFromPile }
+  const drawCardFromDeck = () => {
+    socket.on('draw-card-from-deck', async (lobbyId: string, cb) => {
+      const lobby = lobbies.get(lobbyId)
+
+      if (!lobby) {
+        // algo deu errado!
+        return
+      }
+
+      let updateGameState: ILobby = {} as ILobby
+      const { id } = lobby
+
+      try {
+        const { cards, remaining, deck_id } = await drawCard(
+          lobby.deck?.deck_id!,
+          1,
+        )
+        // socket.emit('drawn-card', cards[0])
+
+        updateGameState = {
+          ...lobby,
+          deck: { deck_id, cards: [], remaining },
+        }
+
+        lobbies.set(id, updateGameState)
+
+        cb({ success: true, card: cards[0] })
+      } catch (error) {
+        console.error(error)
+        cb({ success: false, message: 'não foi possível comprar a carta!' })
+      }
+    })
+  }
+
+  const discardDrawnCard = () => {
+    socket.on('discard-card', (payload: IDiscardDrawnCard) => {
+      const { card, lobbyId, playerId } = payload
+      const lobby = lobbies.get(lobbyId)
+
+      if (!lobby) {
+        // algo deu errado!
+        return
+      }
+
+      let updateGameState: ILobby = {} as ILobby
+      const { id, discardPile, players, playerStartedLastTurn } = lobby
+
+      updateGameState = {
+        ...lobby,
+        discardPile: [...discardPile, card],
+      }
+
+      lobbies.set(id, updateGameState)
+
+      if (startLastTurn(lobby, playerId)) {
+        updateGameState = {
+          ...lobby,
+          playerStartedLastTurn: playerId,
+          discardPile: [...discardPile, card],
+        }
+
+        lobbies.set(id, updateGameState)
+      }
+
+      if (isLastTurn(players)) {
+        // revela cartas restantes
+        const updatePlayer = flipRemainingCards(players, playerId)
+
+        // passa o turno
+        const nextTurnIndex = nextTurn(lobby, playerId)
+
+        if (players[nextTurnIndex].playerId === playerStartedLastTurn) {
+          // chegou na pessoa que virou a última carta
+          // chamar função que finaliza o game endGame()
+
+          updateGameState = {
+            ...lobby,
+            players: updatePlayer,
+            discardPile: [...discardPile, card],
+          }
+
+          lobbies.set(lobby.id, updateGameState)
+          socket.emit('updated-game', updateGameState)
+          socket.broadcast.to(lobby.id).emit('updated-game', updateGameState)
+
+          return
+        }
+
+        updateGameState = {
+          ...lobby,
+          players: updatePlayer,
+          currentTurn: lobby.players[nextTurnIndex].playerId,
+          discardPile: [...discardPile, card],
+        }
+
+        lobbies.set(lobby.id, updateGameState)
+        socket.emit('updated-game', updateGameState)
+        socket.broadcast.to(lobby.id).emit('updated-game', updateGameState)
+        return
+      }
+
+      if (isFirstTurn(lobby.players)) {
+        const updatedPlayerMoves = updatePlayerMoves(players, playerId)
+
+        updateGameState = {
+          ...lobby,
+          players: updatedPlayerMoves,
+          discardPile: [...discardPile, card],
+        }
+
+        if (!hasMovesLeft(updatedPlayerMoves, playerId)) {
+          const nextTurnIndex = nextTurn(lobby, playerId)
+          updateGameState = {
+            ...lobby,
+            players: updatedPlayerMoves,
+            currentTurn: lobby.players[nextTurnIndex].playerId,
+            discardPile: [...discardPile, card],
+          }
+
+          lobbies.set(lobby.id, updateGameState)
+          socket.emit('updated-game', updateGameState)
+          socket.broadcast.to(lobby.id).emit('updated-game', updateGameState)
+          return
+        }
+
+        lobbies.set(lobby.id, updateGameState)
+        socket.emit('updated-game', updateGameState)
+        socket.broadcast.to(lobby.id).emit('updated-game', updateGameState)
+        return
+      }
+
+      const nextTurnIndex = nextTurn(lobby, playerId)
+
+      updateGameState = {
+        ...lobby,
+        currentTurn: lobby.players[nextTurnIndex].playerId,
+        discardPile: [...discardPile, card],
+      }
+
+      lobbies.set(lobby.id, updateGameState)
+      socket.emit('updated-game', updateGameState)
+      socket.broadcast.to(lobby.id).emit('updated-game', updateGameState)
+
+      return
+    })
+  }
+
+  return {
+    startGame,
+    flipCard,
+    replaceCard,
+    drawCardFromDeck,
+    discardDrawnCard,
+  }
 }
