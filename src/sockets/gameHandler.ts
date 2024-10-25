@@ -2,6 +2,7 @@ import { Socket } from 'socket.io'
 import { ILobby } from '../models/lobby'
 import {
   CARDS_PER_PLAYER,
+  cardScore,
   distribuiteCards,
   flipPlayerCard,
   flipRemainingCards,
@@ -17,7 +18,6 @@ import {
 import { createNewDeck, drawCard } from '../services/deck-service'
 import { LobbyStatus } from '../utils/LobbyStatus'
 import { Card } from '../models/deck'
-import { IPlayer } from '../models/player'
 
 interface IFlipCardRequest {
   playerId: string
@@ -58,13 +58,18 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
         const { cards, remaining } = await drawCard(deck.deck_id, DRAW_COUNT)
 
         const playersWithCards = distribuiteCards(lobby.players, cards)
+        const extraDrawnCard = cards[cards.length - 1]
+        const discardCard = {
+          ...extraDrawnCard,
+          score: cardScore(extraDrawnCard),
+        }
 
         const updateGameState: ILobby = {
           ...lobby,
           players: playersWithCards,
           deck: { ...deck, remaining },
           isFirstTurn: true,
-          discardPile: [cards[cards.length - 1]],
+          discardPile: [discardCard],
           status: LobbyStatus.IN_PROGRESS,
           currentTurn: lobby.host,
         }
@@ -337,7 +342,6 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
           lobby.deck?.deck_id!,
           1,
         )
-        // socket.emit('drawn-card', cards[0])
 
         updateGameState = {
           ...lobby,
@@ -346,7 +350,9 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
 
         lobbies.set(id, updateGameState)
 
-        cb({ success: true, card: cards[0] })
+        const mappedCard = { ...cards[0], score: cardScore(cards[0]) }
+
+        cb({ success: true, card: mappedCard })
       } catch (error) {
         console.error(error)
         cb({ success: false, message: 'não foi possível comprar a carta!' })

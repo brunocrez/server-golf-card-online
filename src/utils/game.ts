@@ -6,6 +6,80 @@ export const FIRST_TURN_MOVES_COUNT = 3
 export const CARDS_PER_PLAYER = 6
 export const MAX_PLAYERS = 6
 export const CURRENT_PLAYERS = 1
+export const INITIAL_SCORE = [0, 0, 0]
+
+const getPlayerScore = (playerId: string, players: IPlayer[]) => {
+  const pairs = [
+    [0, 3],
+    [1, 4],
+    [2, 5],
+  ]
+
+  return players.map((p) => {
+    if (p.playerId === playerId) {
+      const columnScores = pairs.map(([idx1, idx2]) => {
+        const card1 = p.cards?.[idx1]
+        const card2 = p.cards?.[idx2]
+
+        const card1FaceUp = card1?.faceUp
+        const card2FaceUp = card2?.faceUp
+
+        // one of them is a joker
+        if (
+          (card1FaceUp && card1.value === 'JOKER') ||
+          (card2FaceUp && card2.value === 'JOKER')
+        ) {
+          return 0
+        }
+
+        // they're equals, column score is 0
+        if (card1FaceUp && card2FaceUp && card1.value === card2.value) {
+          return 0
+        }
+
+        // only one of the pair is face up
+        if (card1FaceUp && !card2FaceUp) {
+          return card1.score
+        }
+
+        if (card2FaceUp && !card1FaceUp) {
+          return card2.score
+        }
+
+        // both pairs are face up
+        if (card1FaceUp && card2FaceUp) {
+          return card1.score + card2.score
+        }
+
+        // none of them is face up
+        return 0
+      })
+
+      return { ...p, score: columnScores }
+    }
+
+    return p
+  })
+}
+
+export const cardScore = (card: Card) => {
+  switch (card.value) {
+    case 'ACE':
+      return 1
+    case 'JACK':
+      return 10
+    case 'QUEEN':
+      return 10
+    case 'KING':
+      return 0
+    case '2':
+      return -2
+    case 'JOKER':
+      return -1
+    default:
+      return Number(card.value)
+  }
+}
 
 export const distribuiteCards = (
   players: IPlayer[],
@@ -16,10 +90,16 @@ export const distribuiteCards = (
   return players.map((player) => {
     const playerCards = cards
       .slice(cardIndex, cardIndex + 6)
-      .map((card) => ({ ...card, faceUp: false }))
+      .map((card) => ({ ...card, faceUp: false, score: cardScore(card) }))
+
     cardIndex += 6
 
-    return { ...player, cards: playerCards, movesLeft: FIRST_TURN_MOVES_COUNT }
+    return {
+      ...player,
+      cards: playerCards,
+      movesLeft: FIRST_TURN_MOVES_COUNT,
+      score: INITIAL_SCORE,
+    }
   })
 }
 
@@ -38,22 +118,26 @@ export const flipPlayerCard = (
   playerId: string,
   cardCode: string,
 ) => {
-  return players.map((player) => {
+  const updatedPlayers = players.map((player) => {
     if (player.playerId === playerId) {
+      const updatedCards = player.cards?.map((card) => {
+        return card.code === cardCode ? { ...card, faceUp: true } : card
+      })
+
       return {
         ...player,
-        cards: player.cards?.map((card) => {
-          return card.code === cardCode ? { ...card, faceUp: true } : card
-        }),
+        cards: updatedCards,
       }
     }
 
     return player
   })
+
+  return getPlayerScore(playerId, updatedPlayers)
 }
 
 export const flipRemainingCards = (players: IPlayer[], playerId: string) => {
-  return players.map((player) => {
+  const updatedPlayers = players.map((player) => {
     if (player.playerId === playerId) {
       return {
         ...player,
@@ -63,6 +147,8 @@ export const flipRemainingCards = (players: IPlayer[], playerId: string) => {
 
     return player
   })
+
+  return getPlayerScore(playerId, updatedPlayers)
 }
 
 export const nextTurn = (lobby: ILobby, playerId: string) => {
@@ -132,13 +218,18 @@ export const updatePlayerBoard = (
     ...player.cards.slice(cardIndex + 1),
   ]
 
-  return players.map((p) => {
+  const updatedPlayers = players.map((p) => {
     if (p.playerId === playerId) {
-      return { ...p, cards: updatedCards }
+      return {
+        ...p,
+        cards: updatedCards,
+      }
     }
 
     return p
   })
+
+  return getPlayerScore(playerId, updatedPlayers)
 }
 
 export const updateDiscardPile = (

@@ -9,6 +9,7 @@ export interface Card {
   value: string
   suit: string
   faceUp: boolean
+  score: number
 }
 
 export interface IDeck {
