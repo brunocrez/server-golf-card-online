@@ -25,3 +25,12 @@ export const drawCard = async (deckId: string, drawCount: number) => {
     throw new Error('we could not draw a card, try again later!')
   }
 }
+
+export const shuffleDeck = async (deckId: string) => {
+  try {
+    const response = await axios.get<IDeck>(`${DECK_API_URL}/${deckId}/shuffle`)
+    return response.data
+  } catch (error) {
+    throw new Error('we could not create a new deck, try again later!')
+  }
+}
