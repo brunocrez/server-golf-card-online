@@ -37,15 +37,13 @@ export const lobbyHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
         maxPlayers: MAX_PLAYERS,
         players: [player],
         status: LobbyStatus.WAITING,
-        rounds: 5,
+        rounds: 2,
+        currentRound: 1,
+        scoreBoard: undefined,
         deck: undefined,
         discardPile: [],
         currentTurn: payload.playerId,
-        isFirstTurn: true,
-        isLastTurn: false,
         playerStartedLastTurn: undefined,
-        createdAt: new Date(),
-        updatedAt: new Date(),
       })
 
       socket.join(lobbyId)

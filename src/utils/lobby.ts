@@ -16,6 +16,6 @@ export const createPlayer = (
     cards: undefined,
     movesLeft: FIRST_TURN_MOVES_COUNT,
     isHost,
-    score: 0,
+    score: [0, 0, 0],
   }
 }
