@@ -123,10 +123,8 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
         if (players[nextTurnIndex].playerId === playerStartedLastTurn) {
           // chegou na pessoa que virou a última carta
           // chamar função que finaliza o game endGame()
-          socket.emit('finish-round', { message: 'finishing round ...' })
-          socket.broadcast
-            .to(id)
-            .emit('finish-round', { message: 'finishing round ...' })
+          socket.emit('finish-round')
+          socket.broadcast.to(id).emit('finish-round')
 
           setTimeout(() => {
             endGame(lobby)
@@ -238,10 +236,8 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
         if (players[nextTurnIndex].playerId === playerStartedLastTurn) {
           // chegou na pessoa que virou a última carta
           // chamar função que finaliza o game endGame()
-          socket.emit('finish-round', { message: 'finishing round ...' })
-          socket.broadcast
-            .to(id)
-            .emit('finish-round', { message: 'finishing round ...' })
+          socket.emit('finish-round')
+          socket.broadcast.to(id).emit('finish-round')
 
           setTimeout(() => {
             endGame(lobby)
@@ -377,10 +373,8 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
           // chegou na pessoa que virou a última carta
           // chamar função que finaliza o game endGame()
 
-          socket.emit('finish-round', { message: 'finishing round ...' })
-          socket.broadcast
-            .to(id)
-            .emit('finish-round', { message: 'finishing round ...' })
+          socket.emit('finish-round')
+          socket.broadcast.to(id).emit('finish-round')
 
           setTimeout(() => {
             endGame(lobby)
@@ -502,7 +496,8 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
 
     // verify if it's the last round
     if (lobby.currentRound + 1 > lobby.rounds) {
-      socket.emit('end-game', lobby)
+      socket.emit('end-game', updateGameState)
+      socket.broadcast.to(lobby.id).emit('end-game', updateGameState)
       return
     }
 
@@ -535,7 +530,6 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
       deck: { ...deck!, remaining },
       discardPile: [discardCard],
       status: LobbyStatus.IN_PROGRESS,
-      currentTurn: lobby.host,
     }
 
     lobbies.set(lobby.id, updateGameState)
