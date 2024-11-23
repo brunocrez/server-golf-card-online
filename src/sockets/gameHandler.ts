@@ -445,11 +445,12 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
 
     // create current score board array
     const currScoreBoard = lobby.players.map((player) => {
-      const { playerId, score, nickname } = player
+      const { playerId, score, nickname, image } = player
       return {
         playerId,
         score: score.reduce((acc, curr) => acc + curr, 0),
         nickname,
+        image,
       }
     })
 
@@ -490,12 +491,13 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
       scoreBoard,
       deck,
       currentRound: lobby.currentRound + 1,
+      playerStartedLastTurn: undefined,
     }
 
     lobbies.set(lobby.id, updateGameState)
 
     // verify if it's the last round
-    if (lobby.currentRound + 1 > lobby.rounds) {
+    if (updateGameState.currentRound > lobby.rounds) {
       socket.emit('end-game', updateGameState)
       socket.broadcast.to(lobby.id).emit('end-game', updateGameState)
       return
