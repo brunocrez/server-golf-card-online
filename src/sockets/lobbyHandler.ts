@@ -2,12 +2,7 @@ import { Socket } from 'socket.io'
 import { ILobby } from '../models/lobby'
 import { genRandomKey } from '../utils/genRandomKey'
 import { LobbyStatus } from '../utils/LobbyStatus'
-import { IPlayer } from '../models/player'
-import {
-  CURRENT_PLAYERS,
-  FIRST_TURN_MOVES_COUNT,
-  MAX_PLAYERS,
-} from '../utils/game'
+import { CURRENT_PLAYERS, MAX_PLAYERS } from '../utils/game'
 import { createPlayer } from '../utils/lobby'
 
 interface ICreateLobbyRequest {
@@ -37,7 +32,7 @@ export const lobbyHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
         maxPlayers: MAX_PLAYERS,
         players: [player],
         status: LobbyStatus.WAITING,
-        rounds: 2,
+        rounds: 1,
         currentRound: 1,
         scoreBoard: undefined,
         deck: undefined,
@@ -56,13 +51,27 @@ export const lobbyHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
       const lobby = lobbies.get(payload.lobbyId)
 
       if (!lobby) {
-        // não foi possível encontrar o lobby
+        socket.emit('error-join-lobby', {
+          message: 'não foi possível encontrar um lobby com esse código!',
+          success: false,
+          lobby,
+        })
+        return
+      }
+
+      if (lobby.status !== LobbyStatus.WAITING) {
+        socket.emit('error-join-lobby', {
+          message: 'desculpe, esse jogo já foi iniciado!',
+          success: false,
+          lobby,
+        })
         return
       }
 
       if (lobby.currentPlayers >= lobby.maxPlayers) {
-        socket.emit('full-lobby', {
+        socket.emit('error-join-lobby', {
           message: 'desculpe, mas a sala já está cheia!',
+          success: false,
           lobby,
         })
         return
