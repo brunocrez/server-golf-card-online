@@ -216,6 +216,7 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
         ...lobby,
         players: updatedPlayers,
         discardPile: updatedDiscardPile,
+        drawnCard: undefined,
       }
 
       if (startLastTurn(updateGameState, playerId)) {
@@ -223,6 +224,7 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
           ...lobby,
           playerStartedLastTurn: playerId,
           discardPile: updatedDiscardPile,
+          drawnCard: undefined,
         }
       }
 
@@ -249,6 +251,7 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
           players: updatePlayer,
           currentTurn: lobby.players[nextTurnIndex].playerId,
           discardPile: updatedDiscardPile,
+          drawnCard: undefined,
         }
 
         lobbies.set(id, updateGameState)
@@ -264,6 +267,7 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
           ...lobby,
           players: updatedPlayerMoves,
           discardPile: updatedDiscardPile,
+          drawnCard: undefined,
         }
 
         if (!hasMovesLeft(updatedPlayerMoves, playerId)) {
@@ -273,6 +277,7 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
             players: updatedPlayerMoves,
             currentTurn: lobby.players[nextTurnIndex].playerId,
             discardPile: updatedDiscardPile,
+            drawnCard: undefined,
           }
 
           lobbies.set(id, updateGameState)
@@ -294,6 +299,7 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
         players: updatedPlayers,
         currentTurn: lobby.players[nextTurnIndex].playerId,
         discardPile: updatedDiscardPile,
+        drawnCard: undefined,
       }
 
       lobbies.set(id, updateGameState)
@@ -320,15 +326,19 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
           1,
         )
 
+        const mappedCard = { ...cards[0], score: cardScore(cards[0]) }
+
         updateGameState = {
           ...lobby,
           deck: { deck_id, cards: [], remaining },
+          drawnCard: mappedCard,
         }
 
         lobbies.set(id, updateGameState)
-        const mappedCard = { ...cards[0], score: cardScore(cards[0]) }
 
         cb({ success: true, card: mappedCard })
+        socket.emit('drawn-card', updateGameState)
+        socket.broadcast.to(lobbyId).emit('drawn-card', updateGameState)
       } catch (error) {
         console.error(error)
         cb({ success: false, message: 'não foi possível comprar a carta!' })
@@ -352,6 +362,7 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
       updateGameState = {
         ...lobby,
         discardPile: [...discardPile, card],
+        drawnCard: undefined,
       }
 
       if (startLastTurn(updateGameState, playerId)) {
@@ -359,6 +370,7 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
           ...lobby,
           playerStartedLastTurn: playerId,
           discardPile: [...discardPile, card],
+          drawnCard: undefined,
         }
       }
 
@@ -386,6 +398,7 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
           players: updatePlayer,
           currentTurn: lobby.players[nextTurnIndex].playerId,
           discardPile: [...discardPile, card],
+          drawnCard: undefined,
         }
 
         lobbies.set(id, updateGameState)
@@ -401,6 +414,7 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
           ...lobby,
           players: updatedPlayerMoves,
           discardPile: [...discardPile, card],
+          drawnCard: undefined,
         }
 
         if (!hasMovesLeft(updatedPlayerMoves, playerId)) {
@@ -410,6 +424,7 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
             players: updatedPlayerMoves,
             currentTurn: lobby.players[nextTurnIndex].playerId,
             discardPile: [...discardPile, card],
+            drawnCard: undefined,
           }
 
           lobbies.set(lobby.id, updateGameState)
@@ -430,6 +445,7 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
         ...updateGameState,
         currentTurn: lobby.players[nextTurnIndex].playerId,
         discardPile: [...discardPile, card],
+        drawnCard: undefined,
       }
 
       lobbies.set(lobby.id, updateGameState)

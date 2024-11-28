@@ -21,4 +21,5 @@ export interface ILobby {
   discardPile: Card[]
   currentTurn: string | undefined
   playerStartedLastTurn: string | undefined
+  drawnCard: Card | undefined
 }

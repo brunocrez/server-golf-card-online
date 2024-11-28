@@ -39,6 +39,7 @@ export const lobbyHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
         discardPile: [],
         currentTurn: payload.playerId,
         playerStartedLastTurn: undefined,
+        drawnCard: undefined,
       })
 
       socket.join(lobbyId)
