@@ -32,7 +32,7 @@ export const lobbyHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
         maxPlayers: MAX_PLAYERS,
         players: [player],
         status: LobbyStatus.WAITING,
-        rounds: 1,
+        rounds: 2,
         currentRound: 1,
         scoreBoard: undefined,
         deck: undefined,
