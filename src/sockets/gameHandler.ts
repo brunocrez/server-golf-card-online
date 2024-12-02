@@ -322,7 +322,7 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
 
       try {
         const { cards, remaining, deck_id } = await drawCard(
-          lobby.deck?.deck_id!,
+          lobby.deck?.deck_id ?? '',
           1,
         )
 
@@ -477,7 +477,10 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
           const currScore = currScoreBoard.find(
             (el) => el.playerId === lobbyScore.playerId,
           )
-          return { ...lobbyScore, score: lobbyScore.score + currScore?.score! }
+          return {
+            ...lobbyScore,
+            score: lobbyScore.score + (currScore?.score ?? 0),
+          }
         })
         .sort((a, b) => a.score - b.score)
     } else {
@@ -492,7 +495,7 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
 
     // reshuffle the deck
     try {
-      deck = await shuffleDeck(lobby.deck?.deck_id!)
+      deck = await shuffleDeck(lobby.deck?.deck_id ?? '')
     } catch (error) {
       console.error(error)
       socket.emit('error-end-game', {
@@ -533,7 +536,7 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
     const { deck } = lobby
     const DRAW_COUNT = lobby.currentPlayers * CARDS_PER_PLAYER + 1
 
-    const { cards, remaining } = await drawCard(deck?.deck_id!, DRAW_COUNT)
+    const { cards, remaining } = await drawCard(deck?.deck_id ?? '', DRAW_COUNT)
 
     const playersWithCards = distribuiteCards(lobby.players, cards)
     const extraDrawnCard = cards[cards.length - 1]
