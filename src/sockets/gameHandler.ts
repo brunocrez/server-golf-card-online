@@ -127,7 +127,7 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
           socket.broadcast.to(id).emit('finish-round')
 
           setTimeout(() => {
-            endGame(lobby)
+            endGame(updateGameState)
           }, 5000)
         }
 
@@ -242,7 +242,7 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
           socket.broadcast.to(id).emit('finish-round')
 
           setTimeout(() => {
-            endGame(lobby)
+            endGame(updateGameState)
           }, 5000)
         }
 
@@ -389,7 +389,7 @@ export const gameHandler = (socket: Socket, lobbies: Map<string, ILobby>) => {
           socket.broadcast.to(id).emit('finish-round')
 
           setTimeout(() => {
-            endGame(lobby)
+            endGame(updateGameState)
           }, 5000)
         }
 
